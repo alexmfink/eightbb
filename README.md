@@ -14,4 +14,4 @@ Note that the sampling rate at which the patch is run will affect the results.
 
 ## How Does it Work?
 
-Bytebeat synthesis typically involves incrementing some counter variable and generating audio samples by performing compound one-liner arithmetic and bit-wise operations on it. See more at http://canonical.org/~Ekragen/bytebeat/ For 8-Bit Buckaroo the operations were arbitrarily chosen, influenced by prior art and sonic results.
+Bytebeat synthesis typically involves incrementing some counter variable and generating audio samples by performing compound one-liner arithmetic and bit-wise operations on it. See more at http://canonical.org/~kragen/bytebeat/ For 8-Bit Buckaroo the operations were arbitrarily chosen, influenced by prior art and sonic results.
