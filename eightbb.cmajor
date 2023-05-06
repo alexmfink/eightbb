@@ -1,0 +1,201 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/eightbb
+
+namespace Audolon::EightBB
+{
+    const int64 MaxValue = 4294967295L; // 2**32 - 1
+
+    graph EightBBSynth [[main]] 
+    {
+        output stream float out_audio;
+
+        input value 
+        {
+            float in_volumeDB [[ name: "Volume", min: -120.0f, max: 0.0f, init: -30.0f, step: 0.1f, automatable: true]];
+        }
+
+        input event
+        {
+            int in_x [[ name: "X", min: 0, max: 32, init: 0, step: 1, automatable: true]];
+            int in_y [[ name: "Y", min: 0, max: 32, init: 8, step: 1, automatable: true]];
+
+            bool in_1A [[ name: "1A", boolean, init: false, automatable: true]];
+            bool in_1B [[ name: "1B", boolean, init: false, automatable: true]];
+            bool in_2A [[ name: "2A", boolean, init: false, automatable: true]];
+            bool in_2B [[ name: "2B", boolean, init: false, automatable: true]];
+            bool in_3A [[ name: "3A", boolean, init: false, automatable: true]];
+            bool in_3B [[ name: "3B", boolean, init: false, automatable: true]];
+            bool in_4A [[ name: "4A", boolean, init: false, automatable: true]];
+            bool in_4B [[ name: "4B", boolean, init: false, automatable: true]];
+        }
+
+        node
+        {
+            bbgen = Audolon::EightBB::EightBBGenerator; 
+        }
+
+        connection
+        {
+            in_x -> bbgen.in_x;
+            in_y -> bbgen.in_y;
+            in_1A -> bbgen.in_1A;
+            in_1B -> bbgen.in_1B;
+            in_2A -> bbgen.in_2A;
+            in_2B -> bbgen.in_2B;
+            in_3A -> bbgen.in_3A;
+            in_3B -> bbgen.in_3B;
+            in_4A -> bbgen.in_4A;
+            in_4B -> bbgen.in_4B;
+
+            bbgen.out_audio * (10.0f **(in_volumeDB / 20.0f)) -> out_audio;
+        }
+    }
+
+    // Wrap like a 32-bit unsigned int
+    int64 CustomWrap(int64 inValue)
+    {
+        while (inValue < 0)
+        {
+            inValue += MaxValue + 1;
+        }
+
+        while (inValue > MaxValue)
+        {
+            inValue -= MaxValue + 1;
+        }
+
+        return inValue;
+    }
+
+    processor EightBBGenerator
+    {
+        input event
+        {
+            int in_x;
+            int in_y;
+
+            bool in_1A;
+            bool in_1B;
+            bool in_2A;
+            bool in_2B;
+            bool in_3A;
+            bool in_3B;
+            bool in_4A;
+            bool in_4B;
+        }
+
+        output stream float out_audio;
+
+        int64 t;
+
+        int m_x;
+        int m_y;
+
+        bool m_1A;
+        bool m_1B;
+        bool m_2A;
+        bool m_2B;
+        bool m_3A;
+        bool m_3B;
+        bool m_4A;
+        bool m_4B;
+
+        void init()
+        {
+            t = 0;
+        }
+
+        event in_x (int val) {m_x  = val;}
+        event in_y (int val) {m_y  = val;}
+        event in_1A (bool val) {m_1A = val;}
+        event in_1B (bool val) {m_1B = val;}
+        event in_2A (bool val) {m_2A = val;}
+        event in_2B (bool val) {m_2B = val;}
+        event in_3A (bool val) {m_3A = val;}
+        event in_3B (bool val) {m_3B = val;}
+        event in_4A (bool val) {m_4A = val;}
+        event in_4B (bool val) {m_4B = val;}
+
+        void main() 
+        {
+            loop
+            {
+                int64 u = ( t >>> 12) | (t >>> m_y);
+
+                if (m_2A)
+                {
+                    u = u ^ 170;
+                }
+
+                if (m_2B)
+                {
+                    u = u ^ 85;
+                }
+
+                u = u ^ (~(t >>> m_x));
+                u = CustomWrap(u);
+
+
+                if (!m_4B)
+                {
+                    u = u & (63 & (t >>> 4));
+                }
+                else 
+                {
+                    u = u & (63 & (t >>> 6));
+                }
+
+                if (m_3A)
+                {
+                    int64 temp1 = CustomWrap(t << 3);
+                    u = u | (temp1 & (t >>> 3));
+                }
+
+                if (m_3B)
+                {
+                    u += t >>> 4;
+                    u = CustomWrap(u);
+                }
+
+                if (m_1A)
+                {
+                    u = (t >>> 1) * u;
+                    u = CustomWrap(u);
+                }
+                else
+                {
+                    u = t * u;
+                    u = CustomWrap(u);
+                }
+
+                if (m_4A)
+                {
+                    int64 temp1 = 0;
+                    for(wrap<32> i)
+                    {
+                        int64 inMask = 1 << i;
+                        if ((inMask & u) > 0)
+                        {
+                            temp1 = temp1 | (1 << (31 - i));
+                        }
+                    }
+                    u = temp1 >>> 16;
+                }
+
+                if (m_1B)
+                {
+                    u = (u & 255) << 8;
+                }
+                else 
+                {
+                    u = (u & 65535);
+                }
+
+                t = CustomWrap(t + 1);
+
+                out_audio <- float(u - 32768) / 32768.0f;
+                advance();
+            }
+        }
+    }
+}

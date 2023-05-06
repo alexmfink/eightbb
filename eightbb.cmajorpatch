@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "com.audolon.eightbb",
+    "version":          "0.1.00",
+    "name":             "8-Bit Buckaroo",
+    "description":      "Bytebeat Synthesizer",
+    "category":         "generator",
+    "manufacturer":     "Audolon",
+    "isInstrument":     true,
+
+    "source":           [ "eightbb.cmajor" ]
+}
