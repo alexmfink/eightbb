@@ -11,11 +11,13 @@ namespace Audolon::EightBB
 
         input value 
         {
-            float in_volumeDB [[ name: "Volume", min: -120.0f, max: 0.0f, init: -30.0f, step: 0.1f, automatable: true]];
+            float in_volumeDB [[ name: "Volume", unit: "dB", min: -120.0f, max: 0.0f, init: -30.0f, step: 0.1f, automatable: true]];
         }
 
         input event
         {
+            float in_rateMod [[ name: "Rate Mod", min: 0.0f, max: 2.0f, init: 1.0f, step: 0.001f, automatable: true]];
+
             int in_x [[ name: "X", min: 0, max: 32, init: 0, step: 1, automatable: true]];
             int in_y [[ name: "Y", min: 0, max: 32, init: 8, step: 1, automatable: true]];
 
@@ -38,6 +40,7 @@ namespace Audolon::EightBB
         {
             in_x -> bbgen.in_x;
             in_y -> bbgen.in_y;
+            in_rateMod -> bbgen.in_rateMod;
             in_1A -> bbgen.in_1A;
             in_1B -> bbgen.in_1B;
             in_2A -> bbgen.in_2A;
@@ -51,7 +54,7 @@ namespace Audolon::EightBB
         }
     }
 
-    // Wrap like a 32-bit unsigned int
+    //! Wrap like a 32-bit unsigned int
     int64 CustomWrap(int64 inValue)
     {
         while (inValue < 0)
@@ -67,12 +70,17 @@ namespace Audolon::EightBB
         return inValue;
     }
 
+    //! This is a bytebeat synthesizer (ported from an Android app) that works
+    //! by performing arbitrarily chosen arithmetic and bitwise operations on a
+    //! counter variable.
     processor EightBBGenerator
     {
         input event
         {
             int in_x;
             int in_y;
+
+            float in_rateMod;
 
             bool in_1A;
             bool in_1B;
@@ -91,6 +99,9 @@ namespace Audolon::EightBB
         int m_x;
         int m_y;
 
+        float m_counter;
+        float m_counterIncrement;
+
         bool m_1A;
         bool m_1B;
         bool m_2A;
@@ -103,10 +114,13 @@ namespace Audolon::EightBB
         void init()
         {
             t = 0;
+            m_counter = 0.0f;
+            m_counterIncrement = 1.0f;
         }
 
         event in_x (int val) {m_x  = val;}
         event in_y (int val) {m_y  = val;}
+        event in_rateMod (float val) {m_counterIncrement = val ** 2.0f;}
         event in_1A (bool val) {m_1A = val;}
         event in_1B (bool val) {m_1B = val;}
         event in_2A (bool val) {m_2A = val;}
@@ -182,6 +196,7 @@ namespace Audolon::EightBB
                     u = temp1 >>> 16;
                 }
 
+                // We are chopping off the most significant 16 bits
                 if (m_1B)
                 {
                     u = (u & 255) << 8;
@@ -191,8 +206,17 @@ namespace Audolon::EightBB
                     u = (u & 65535);
                 }
 
-                t = CustomWrap(t + 1);
-
+                // Perform playback rate modulation. We are unconcerned with aliasing
+                // since it's preferable in this application.
+                m_counter += m_counterIncrement;
+                while (m_counter >= 1.0f)
+                {
+                    t = CustomWrap(t + 1);
+                    m_counter -= 1.0f;
+                }
+                
+                // Shift the output signal to [-1,1]. Note that this has no actual
+                // guarantee that the signal has no DC component.
                 out_audio <- float(u - 32768) / 32768.0f;
                 advance();
             }
