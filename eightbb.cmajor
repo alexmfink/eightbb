@@ -72,7 +72,8 @@ namespace Audolon::EightBB
 
     //! This is a bytebeat synthesizer (ported from an Android app) that works
     //! by performing arbitrarily chosen arithmetic and bitwise operations on a
-    //! counter variable.
+    //! counter variable. The original works with 32-bit unsigned integers, and
+    //! this implementation attempts to replicate that.
     processor EightBBGenerator
     {
         input event
