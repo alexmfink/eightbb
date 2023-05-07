@@ -146,7 +146,7 @@ namespace Audolon::EightBB
                     u = u ^ 85;
                 }
 
-                u = u ^ (~(t >>> m_x));
+                u = u ^ ((~(t >>> m_x)) & 0xFFFFFFFF_L);
                 u = CustomWrap(u);
 
 
@@ -184,6 +184,7 @@ namespace Audolon::EightBB
 
                 if (m_4A)
                 {
+                    // Reverse 32-bits
                     int64 temp1 = 0;
                     for(wrap<32> i)
                     {
